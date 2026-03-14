@@ -212,7 +212,7 @@ def generate_pdf(data, lang):
     pdf.set_font(fn, "I", 8)
     pdf.cell(pw, 5, tr["pdf_footer"], align="C")
 
-    return pdf.output()
+    return bytes(pdf.output())
 
 
 def main():
@@ -232,8 +232,9 @@ def main():
     .header-banner p { color: #b0c8e8; font-style: italic; margin: 0; font-size: 0.9rem; }
     .result-box {
         background: #f8fafc; border: 1px solid #d0d8e4; border-radius: 8px;
-        padding: 1.2rem; margin-top: 0.5rem;
+        padding: 1.2rem; margin-top: 0.5rem; color: #1a2a3a;
     }
+    .result-box b, .result-box p { color: #1a2a3a; }
     .result-box h4 { color: #2b5797; margin: 0.8rem 0 0.3rem; }
     .result-box h4:first-child { margin-top: 0; }
     .fu-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
