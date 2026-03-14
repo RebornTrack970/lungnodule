@@ -78,18 +78,13 @@ def sanitize(text):
             .replace("\u2264", "<="))
 
 
-def generate_pdf(data, lang):
-    tr = TRANSLATIONS[lang]
-
-    pdf = FPDF()
-    pdf.add_page()
-
-    # Add Unicode font for Turkish character support
+def _find_unicode_font():
+    """Find a Unicode-capable font on the system. Returns (regular, bold, italic) or None."""
     font_sets = [
         # Windows
         ("C:/Windows/Fonts/arial.ttf", "C:/Windows/Fonts/arialbd.ttf", "C:/Windows/Fonts/ariali.ttf"),
         ("C:/Windows/Fonts/segoeui.ttf", "C:/Windows/Fonts/segoeuib.ttf", "C:/Windows/Fonts/segoeuii.ttf"),
-        # Linux (Streamlit Cloud)
+        # Linux (Streamlit Cloud with packages.txt)
         ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
          "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
          "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf"),
@@ -97,17 +92,36 @@ def generate_pdf(data, lang):
          "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
          "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf"),
     ]
-    fn = "Helvetica"
+    import os
     for regular, bold, italic in font_sets:
-        try:
-            with open(regular, "rb"), open(bold, "rb"), open(italic, "rb"):
-                pdf.add_font("UniFont", "", regular, uni=True)
-                pdf.add_font("UniFont", "B", bold, uni=True)
-                pdf.add_font("UniFont", "I", italic, uni=True)
-                fn = "UniFont"
-                break
-        except FileNotFoundError:
-            continue
+        if os.path.isfile(regular) and os.path.isfile(bold) and os.path.isfile(italic):
+            return (regular, bold, italic)
+    # Fallback: try regular only (use it for all styles)
+    for regular, bold, italic in font_sets:
+        if os.path.isfile(regular):
+            return (regular, regular, regular)
+    return None
+
+
+def generate_pdf(data, lang):
+    tr = TRANSLATIONS[lang]
+
+    pdf = FPDF()
+    pdf.add_page()
+
+    # Add Unicode font for Turkish character support
+    font_files = _find_unicode_font()
+    if font_files:
+        regular, bold, italic = font_files
+        pdf.add_font("UniFont", "", regular, uni=True)
+        pdf.add_font("UniFont", "B", bold, uni=True)
+        pdf.add_font("UniFont", "I", italic, uni=True)
+        fn = "UniFont"
+    else:
+        fn = "Helvetica"
+        # Sanitize all Turkish chars for Helvetica (no Unicode support)
+        tr = {k: sanitize(v) for k, v in tr.items()}
+        data = {k: sanitize(v) if isinstance(v, str) else v for k, v in data.items()}
 
     pw = pdf.w - pdf.l_margin - pdf.r_margin
 
@@ -253,23 +267,24 @@ def main():
         st.session_state.lang = detect_language()
 
     lang_options = {"en": "English", "tr": "T\u00fcrk\u00e7e"}
-    cols = st.columns([6, 1])
-    with cols[1]:
+
+    # --- Header with language selector ---
+    hdr_left, hdr_right = st.columns([5, 1])
+    with hdr_left:
+        st.markdown(f"""
+        <div class="header-banner">
+            <h1>{t('page_title')}</h1>
+            <p>{t('page_subtitle')}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with hdr_right:
+        st.markdown("<div style='height: 0.5rem'></div>", unsafe_allow_html=True)
         selected_lang = st.selectbox(
-            "\U0001f310", options=list(lang_options.keys()),
+            t("language"), options=list(lang_options.keys()),
             format_func=lambda x: lang_options[x],
             index=list(lang_options.keys()).index(st.session_state.lang),
-            label_visibility="collapsed",
         )
         st.session_state.lang = selected_lang
-
-    # --- Header ---
-    st.markdown(f"""
-    <div class="header-banner">
-        <h1>{t('page_title')}</h1>
-        <p>{t('page_subtitle')}</p>
-    </div>
-    """, unsafe_allow_html=True)
 
     # --- Patient Info ---
     st.subheader(t("patient_info"))
