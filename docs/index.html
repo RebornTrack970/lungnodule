@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Lung Nodule Follow-Up</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    background: #eaf0f7; color: #1a2a3a;
+    padding-bottom: 30px; max-width: 800px; margin: 0 auto;
+}
+.header {
+    background: #2b5797; color: #fff;
+    padding: 16px 18px 12px; margin-bottom: 16px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+}
+.header-text h1 { font-size: 1.2rem; margin-bottom: 2px; }
+.header-text p { color: #b0c8e8; font-size: 0.75rem; font-style: italic; }
+.lang-select {
+    background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 6px; padding: 6px 8px; font-size: 0.8rem; margin-top: 2px;
+}
+.lang-select option { color: #333; background: #fff; }
+.card {
+    background: #fff; border: 1px solid #d0d8e4; border-radius: 8px;
+    margin: 0 12px 12px; padding: 14px 16px;
+}
+.card h2 {
+    color: #2b5797; font-size: 0.95rem; margin-bottom: 10px;
+    border-bottom: 1px solid #e8ecf2; padding-bottom: 6px;
+}
+.card h3 { color: #2b5797; font-size: 0.85rem; margin: 8px 0 4px; }
+label.field { display: block; font-size: 0.8rem; color: #555; margin-bottom: 4px; font-weight: 600; }
+input[type="text"], input[type="date"] {
+    width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;
+    font-size: 0.9rem; margin-bottom: 10px; background: #fafbfc;
+}
+input[type="text"]:focus, input[type="date"]:focus { border-color: #2b5797; outline: none; }
+.radio-group { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.radio-group label {
+    display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+    border: 1px solid #d0d8e4; border-radius: 6px; cursor: pointer;
+    font-size: 0.85rem; transition: all 0.15s; background: #fafbfc;
+}
+.radio-group input[type="radio"] { accent-color: #2b5797; }
+.radio-group label:has(input:checked) {
+    background: #d6e4f5; border-color: #2b5797; font-weight: 600;
+}
+.info-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; background: #2b5797; color: #fff;
+    border-radius: 50%; font-size: 0.75rem; font-weight: 700;
+    border: none; cursor: pointer; margin-left: 8px; vertical-align: middle;
+}
+.risk-desc {
+    background: #f5f7fa; border-radius: 6px; padding: 10px 12px;
+    margin-top: 8px; font-size: 0.75rem; color: #5a6a7a; line-height: 1.5;
+}
+.risk-desc strong { color: #333; }
+.risk-desc em { color: #7a8a9a; }
+.result-box {
+    background: #f8fafc; border: 1px solid #d0d8e4; border-radius: 8px;
+    padding: 14px; margin-top: 8px; color: #1a2a3a;
+}
+.result-box h4 { color: #2b5797; font-size: 0.85rem; margin: 10px 0 4px; }
+.result-box h4:first-child { margin-top: 0; }
+.result-box .field-row { font-size: 0.85rem; line-height: 1.6; }
+.result-box .field-row b { color: #333; }
+.fu-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 0.82rem; }
+.fu-table th { background: #d6e4f5; color: #2b5797; text-align: left; padding: 6px 10px; }
+.fu-table td { padding: 5px 10px; }
+.fu-table tr:nth-child(even) { background: #f0f4f8; }
+.fu-table .date { color: #2b7a3e; font-weight: 600; }
+.note { color: #b85c00; font-style: italic; font-size: 0.82rem; margin-top: 6px; }
+.btn-pdf {
+    display: block; width: calc(100% - 24px); margin: 12px auto;
+    padding: 14px; background: #2b5797; color: #fff; border: none;
+    border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer;
+}
+.btn-pdf:active { background: #1d3f6f; }
+.btn-pdf:disabled { background: #999; }
+/* Modal */
+.modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: flex-start;
+    padding: 20px;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+    background: #fff; border-radius: 10px; width: 100%; max-width: 600px;
+    max-height: 85vh; overflow-y: auto;
+}
+.modal-header {
+    background: #2b5797; color: #fff; padding: 14px 16px;
+    font-weight: 700; font-size: 1rem; border-radius: 10px 10px 0 0;
+    display: flex; justify-content: space-between; align-items: center;
+    position: sticky; top: 0;
+}
+.modal-close {
+    background: none; border: none; color: #fff; font-size: 1.5rem;
+    cursor: pointer; padding: 0 4px; line-height: 1;
+}
+.modal-body { padding: 16px; }
+.modal-body h3 { color: #2b5797; font-size: 0.9rem; margin: 14px 0 6px; border-bottom: 1px solid #e8ecf2; padding-bottom: 4px; }
+.modal-body h3:first-child { margin-top: 0; }
+.modal-body ul { padding-left: 18px; margin-bottom: 6px; }
+.modal-body li { font-size: 0.82rem; color: #333; line-height: 1.6; margin-bottom: 4px; }
+.placeholder { color: #888; font-style: italic; font-size: 0.85rem; padding: 10px 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-text">
+        <h1 id="hdr-title"></h1>
+        <p id="hdr-sub"></p>
+    </div>
+    <select class="lang-select" id="langSelect" onchange="setLang(this.value)">
+        <option value="en">English</option>
+        <option value="tr">Turkce</option>
+    </select>
+</div>
+
+<!-- Patient Info -->
+<div class="card">
+    <h2 id="lbl-patient-info"></h2>
+    <label class="field" id="lbl-name"></label>
+    <input type="text" id="patientName" oninput="update()">
+    <label class="field" id="lbl-date"></label>
+    <input type="date" id="imagingDate" onchange="update()">
+</div>
+
+<!-- Classification -->
+<div class="card">
+    <h2 id="lbl-classification"></h2>
+    <h3 id="lbl-type"></h3>
+    <div class="radio-group" id="typeGroup"></div>
+    <h3 id="lbl-count"></h3>
+    <div class="radio-group" id="countGroup"></div>
+</div>
+
+<!-- Size -->
+<div class="card">
+    <h2>
+        <span id="lbl-size"></span>
+        <button class="info-btn" onclick="showModal()">i</button>
+    </h2>
+    <div class="radio-group" id="sizeGroup"></div>
+</div>
+
+<!-- Risk -->
+<div class="card" id="riskCard">
+    <h2 id="lbl-risk"></h2>
+    <div class="radio-group" id="riskGroup"></div>
+    <div class="risk-desc" id="riskDesc"></div>
+</div>
+
+<!-- Result -->
+<div class="card">
+    <h2 id="lbl-recommendation"></h2>
+    <div id="resultArea"><p class="placeholder" id="lbl-fill-all"></p></div>
+</div>
+
+<!-- PDF Button -->
+<button class="btn-pdf" id="btnPdf" onclick="createPdf()" disabled></button>
+
+<!-- Info Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="hideModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <span id="modal-title"></span>
+            <button class="modal-close" onclick="hideModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<script>
+// ========== TRANSLATIONS ==========
+const T = {
+en: {
+    page_title: "Pulmonary Nodule Follow-Up Guidelines",
+    page_subtitle: "Based on Fleischner Society Recommendations",
+    patient_info: "Patient Information",
+    patient_name: "Patient Name",
+    imaging_date: "Imaging Date",
+    nodule_classification: "Nodule Classification",
+    type: "Type", solid: "Solid", subsolid: "Subsolid",
+    count: "Count", single: "Single", multiple: "Multiple",
+    nodule_size: "Nodule Size",
+    measurement_info: "Measurement Guidelines",
+    risk_level: "Risk Level", low_risk: "Low-risk", high_risk: "High-risk",
+    high_risk_desc: "<strong>High risk:</strong> Current or former smoker, family history of lung cancer, personal cancer history, exposure to asbestos/radon, age >50, COPD, pulmonary fibrosis",
+    low_risk_desc: "<strong>Low risk:</strong> Minimal or no smoking history, age <40, no other risk factors",
+    risk_note: "<em>Note: High-risk threshold is generally considered >5% estimated cancer risk</em>",
+    recommendation: "Recommendation",
+    patient_summary: "PATIENT SUMMARY", name_label: "Name",
+    imaging_date_label: "Imaging Date", nodule_label: "Nodule", risk_label: "Risk",
+    follow_up_schedule: "FOLLOW-UP SCHEDULE",
+    months: "months", no_follow_up: "No scheduled follow-up dates.",
+    multiple_note: "Note: When multiple nodules are present, the most suspicious nodule should guide further individualized management.",
+    create_report: "Create Report (PDF)",
+    report_generated: "Report generated",
+    report_title: "Pulmonary Nodule Follow-Up Report",
+    timeframe: "Timeframe", suggested_date: "Suggested Date",
+    pdf_footer: "This report is for clinical reference only. Clinical judgement should always be applied.",
+    fill_all_fields: "Please fill in all fields to see the recommendation.",
+    size_lt6: "<6 mm (<100 mm\u00b3)", size_6_8: "6-8 mm (100-250 mm\u00b3)", size_gt8: ">8 mm (>250 mm\u00b3)",
+    size_gg_lt6: "Ground glass - <6 mm (<100 mm\u00b3)", size_gg_gte6: "Ground glass - \u22656 mm (\u2265100 mm\u00b3)",
+    size_ps_lt6: "Part-solid - <6 mm (<100 mm\u00b3)", size_ps_gte6: "Part-solid - \u22656 mm (\u2265100 mm\u00b3)",
+    size_sub_lt6: "<6 mm (<100 mm\u00b3)", size_sub_gte6: "\u22656 mm (\u2265100 mm\u00b3)",
+    rec_no_followup: "No routine follow-up required.",
+    rec_solid_single_lt6_high: "Optional CT at 12 months (particularly with suspicious nodule morphology and/or upper lobe location).",
+    rec_solid_multi_lt6_high: "Optional CT at 12 months.",
+    rec_solid_single_68_low: "CT at 6-12 months, then consider CT at 18-24 months.",
+    rec_solid_single_68_high: "CT at 6-12 months, then CT at 18-24 months.",
+    rec_solid_multi_68_low: "CT at 3-6 months, then consider CT at 18-24 months.",
+    rec_solid_multi_68_high: "CT at 3-6 months, then at 18-24 months.",
+    rec_solid_single_gt8: "Consider CT at 3 months, PET-CT, or tissue sampling.",
+    rec_solid_multi_gt8_low: "CT at 3-6 months, then consider CT at 18-24 months.",
+    rec_solid_multi_gt8_high: "CT at 3-6 months, then at 18-24 months.",
+    rec_sub_gg_gte6: "CT at 6-12 months, then if persistent, CT every 2 years until 5 years.",
+    rec_sub_ps_gte6: "CT at 3-6 months, then if persistent and solid component remains <6 mm, annual CT until 5 years.",
+    rec_sub_multi_lt6: "CT at 3-6 months, then if stable consider CT at 2 and 4 years in high-risk patients.",
+    rec_sub_multi_gte6: "CT at 3-6 months, then subsequent management based on the most suspicious nodule(s).",
+    info_sections: [
+        { title: "Image Production and Viewing", items: [
+            "Images should be acquired in full inspiration.",
+            "Nodules should usually be measured in the axial (transverse) plane, although the coronal or sagittal plane may be used if the greatest dimensions lie in those planes.",
+            "Nodules should be measured in lung windows, although soft tissue windows can help evaluate changes in nodule density over time.",
+            "Small nodules (<10 mm) should be viewed and measured on images reconstructed in thin slices (\u22641.5 mm, ideally 1 mm) using a high-spatial frequency (sharp) algorithm.",
+            "If automated or semi-automated volumetry is performed it should be done using the same software for the initial and follow-up studies."
+        ]},
+        { title: "Nodule Description - By Size", items: [
+            "Small nodules 3-10 mm: average of short-axis and long-axis diameters (same slice).",
+            "Small nodules <3 mm should be described as micronodules.",
+            "Larger nodules >10 mm: described in both short- and long-axis measurements.",
+            "Measurements should be rounded to the nearest whole millimeter."
+        ]},
+        { title: "Part-Solid Nodules", items: [
+            "Solid components >3 mm should have the maximal diameter reported.",
+            "Part-solid nodules cannot be discerned as such when <6 mm."
+        ]},
+        { title: "General Assessment", items: [
+            "When multiple nodules are present, only the largest or most suspicious need to be measured.",
+            "The dominant nodule is the morphologically most suspicious lesion, not necessarily the largest.",
+            "An increase in nodule dimension by \u22652 mm is required to identify significant growth.",
+            "Volume doubling time can be used as an ancillary feature.",
+            "Perifissural nodules with characteristic morphology do not necessarily require follow-up even if >6 mm."
+        ]}
+    ]
+},
+tr: {
+    page_title: "Pulmoner Nod\u00fcl Takip K\u0131lavuzu",
+    page_subtitle: "Fleischner Derne\u011fi \u00d6nerilerine Dayanmaktad\u0131r",
+    patient_info: "Hasta Bilgileri",
+    patient_name: "Hasta Ad\u0131",
+    imaging_date: "G\u00f6r\u00fcnt\u00fcleme Tarihi",
+    nodule_classification: "Nod\u00fcl S\u0131n\u0131fland\u0131rmas\u0131",
+    type: "Tip", solid: "Solid", subsolid: "Subsolid",
+    count: "Say\u0131", single: "Tekli", multiple: "\u00c7oklu",
+    nodule_size: "Nod\u00fcl Boyutu",
+    measurement_info: "\u00d6l\u00e7\u00fcm K\u0131lavuzu",
+    risk_level: "Risk D\u00fczeyi", low_risk: "D\u00fc\u015f\u00fck risk", high_risk: "Y\u00fcksek risk",
+    high_risk_desc: "<strong>Y\u00fcksek risk:</strong> Mevcut veya eski sigara i\u00e7icisi, akci\u011fer kanseri aile \u00f6yk\u00fcs\u00fc, ki\u015fisel kanser \u00f6yk\u00fcs\u00fc, asbest/radon maruziyeti, ya\u015f >50, KOAH, pulmoner fibrozis",
+    low_risk_desc: "<strong>D\u00fc\u015f\u00fck risk:</strong> Minimal veya hi\u00e7 sigara \u00f6yk\u00fcs\u00fc, ya\u015f <40, ba\u015fka risk fakt\u00f6r\u00fc yok",
+    risk_note: "<em>Not: Y\u00fcksek risk e\u015fi\u011fi genellikle >%5 tahmini kanser riski olarak kabul edilir</em>",
+    recommendation: "\u00d6neri",
+    patient_summary: "HASTA \u00d6ZET\u0130", name_label: "Ad",
+    imaging_date_label: "G\u00f6r\u00fcnt\u00fcleme Tarihi", nodule_label: "Nod\u00fcl", risk_label: "Risk",
+    follow_up_schedule: "TAK\u0130P TAKV\u0130M\u0130",
+    months: "ay", no_follow_up: "Planlanm\u0131\u015f takip tarihi yok.",
+    multiple_note: "Not: Birden fazla nod\u00fcl mevcut oldu\u011funda, en \u015f\u00fcpheli nod\u00fcl bireysel y\u00f6netimi y\u00f6nlendirmelidir.",
+    create_report: "Rapor Olu\u015ftur (PDF)",
+    report_generated: "Rapor olu\u015fturulma tarihi",
+    report_title: "Pulmoner Nod\u00fcl Takip Raporu",
+    timeframe: "Zaman Dilimi", suggested_date: "\u00d6nerilen Tarih",
+    pdf_footer: "Bu rapor yaln\u0131zca klinik referans i\u00e7indir. Klinik de\u011ferlendirme her zaman uygulanmal\u0131d\u0131r.",
+    fill_all_fields: "L\u00fctfen \u00f6neriyi g\u00f6rmek i\u00e7in t\u00fcm alanlar\u0131 doldurun.",
+    size_lt6: "<6 mm (<100 mm\u00b3)", size_6_8: "6-8 mm (100-250 mm\u00b3)", size_gt8: ">8 mm (>250 mm\u00b3)",
+    size_gg_lt6: "Buzlu cam - <6 mm (<100 mm\u00b3)", size_gg_gte6: "Buzlu cam - \u22656 mm (\u2265100 mm\u00b3)",
+    size_ps_lt6: "K\u0131smi solid - <6 mm (<100 mm\u00b3)", size_ps_gte6: "K\u0131smi solid - \u22656 mm (\u2265100 mm\u00b3)",
+    size_sub_lt6: "<6 mm (<100 mm\u00b3)", size_sub_gte6: "\u22656 mm (\u2265100 mm\u00b3)",
+    rec_no_followup: "Rutin takip gerekli de\u011fildir.",
+    rec_solid_single_lt6_high: "12. ayda iste\u011fe ba\u011fl\u0131 BT (\u00f6zellikle \u015f\u00fcpheli nod\u00fcl morfolojisi ve/veya \u00fcst lob lokalizasyonunda).",
+    rec_solid_multi_lt6_high: "12. ayda iste\u011fe ba\u011fl\u0131 BT.",
+    rec_solid_single_68_low: "6-12. ayda BT, ard\u0131ndan 18-24. ayda BT d\u00fc\u015f\u00fcn\u00fclebilir.",
+    rec_solid_single_68_high: "6-12. ayda BT, ard\u0131ndan 18-24. ayda BT.",
+    rec_solid_multi_68_low: "3-6. ayda BT, ard\u0131ndan 18-24. ayda BT d\u00fc\u015f\u00fcn\u00fclebilir.",
+    rec_solid_multi_68_high: "3-6. ayda BT, ard\u0131ndan 18-24. ayda BT.",
+    rec_solid_single_gt8: "3. ayda BT, PET-BT veya doku \u00f6rneklemesi d\u00fc\u015f\u00fcn\u00fclebilir.",
+    rec_solid_multi_gt8_low: "3-6. ayda BT, ard\u0131ndan 18-24. ayda BT d\u00fc\u015f\u00fcn\u00fclebilir.",
+    rec_solid_multi_gt8_high: "3-6. ayda BT, ard\u0131ndan 18-24. ayda BT.",
+    rec_sub_gg_gte6: "6-12. ayda BT, ard\u0131ndan devam ediyorsa 5 y\u0131la kadar her 2 y\u0131lda BT.",
+    rec_sub_ps_gte6: "3-6. ayda BT, ard\u0131ndan devam ediyorsa ve solid bile\u015fen <6 mm kalm\u0131\u015fsa 5 y\u0131la kadar y\u0131ll\u0131k BT.",
+    rec_sub_multi_lt6: "3-6. ayda BT, ard\u0131ndan stabil ise y\u00fcksek riskli hastalarda 2. ve 4. y\u0131lda BT d\u00fc\u015f\u00fcn\u00fclebilir.",
+    rec_sub_multi_gte6: "3-6. ayda BT, ard\u0131ndan en \u015f\u00fcpheli nod\u00fcl(ler)e g\u00f6re y\u00f6netim.",
+    info_sections: [
+        { title: "G\u00f6r\u00fcnt\u00fc \u00dcretimi ve De\u011ferlendirme", items: [
+            "G\u00f6r\u00fcnt\u00fcler tam inspirasyonda al\u0131nmal\u0131d\u0131r.",
+            "Nod\u00fcller genellikle aksiyel (transvers) d\u00fczlemde \u00f6l\u00e7\u00fclmelidir.",
+            "Nod\u00fcller akci\u011fer pencerelerinde \u00f6l\u00e7\u00fclmelidir.",
+            "K\u00fc\u00e7\u00fck nod\u00fcller (<10 mm) ince kesitlerde (\u22641.5 mm, ideal 1 mm) y\u00fcksek uzaysal frekans algoritma ile \u00f6l\u00e7\u00fclmelidir.",
+            "Otomatik vol\u00fcmetri yap\u0131l\u0131yorsa ayn\u0131 yaz\u0131l\u0131m kullan\u0131lmal\u0131d\u0131r."
+        ]},
+        { title: "Nod\u00fcl Tan\u0131m\u0131 - Boyuta G\u00f6re", items: [
+            "3-10 mm nod\u00fcller: k\u0131sa ve uzun aks \u00e7aplar\u0131n\u0131n ortalamas\u0131.",
+            "<3 mm nod\u00fcller mikronod\u00fcl olarak tan\u0131mlanmal\u0131d\u0131r.",
+            ">10 mm nod\u00fcller: hem k\u0131sa hem uzun aks \u00f6l\u00e7\u00fclmelidir.",
+            "\u00d6l\u00e7\u00fcmler en yak\u0131n tam milimetreye yuvarlanmal\u0131d\u0131r."
+        ]},
+        { title: "K\u0131smi Solid Nod\u00fcller", items: [
+            ">3 mm solid bile\u015fenlerin maksimal \u00e7ap\u0131 raporlanmal\u0131d\u0131r.",
+            "K\u0131smi solid nod\u00fcller <6 mm oldu\u011funda ay\u0131rt edilemez."
+        ]},
+        { title: "Genel De\u011ferlendirme", items: [
+            "Birden fazla nod\u00fclde yaln\u0131zca en b\u00fcy\u00fck veya en \u015f\u00fcpheli \u00f6l\u00e7\u00fclmelidir.",
+            "Dominant nod\u00fcl morfolojik olarak en \u015f\u00fcpheli lezyondur.",
+            "Anlaml\u0131 b\u00fcy\u00fcme i\u00e7in \u22652 mm art\u0131\u015f gereklidir.",
+            "Vol\u00fcm ikiye katlama s\u00fcresi yard\u0131mc\u0131 \u00f6zellik olarak kullan\u0131labilir.",
+            "Karakteristik perifiss\u00fcral nod\u00fcller >6 mm olsa bile takip gerektirmeyebilir."
+        ]}
+    ]
+}
+};
+
+// ========== RECOMMENDATION LOGIC ==========
+const REC_KEYS = {
+    "Solid|Single|size_lt6|low": "rec_no_followup",
+    "Solid|Single|size_lt6|high": "rec_solid_single_lt6_high",
+    "Solid|Multiple|size_lt6|low": "rec_no_followup",
+    "Solid|Multiple|size_lt6|high": "rec_solid_multi_lt6_high",
+    "Solid|Single|size_6_8|low": "rec_solid_single_68_low",
+    "Solid|Single|size_6_8|high": "rec_solid_single_68_high",
+    "Solid|Multiple|size_6_8|low": "rec_solid_multi_68_low",
+    "Solid|Multiple|size_6_8|high": "rec_solid_multi_68_high",
+    "Solid|Single|size_gt8|low": "rec_solid_single_gt8",
+    "Solid|Single|size_gt8|high": "rec_solid_single_gt8",
+    "Solid|Multiple|size_gt8|low": "rec_solid_multi_gt8_low",
+    "Solid|Multiple|size_gt8|high": "rec_solid_multi_gt8_high",
+    "Subsolid|Single|size_gg_lt6|none": "rec_no_followup",
+    "Subsolid|Single|size_gg_gte6|none": "rec_sub_gg_gte6",
+    "Subsolid|Single|size_ps_lt6|none": "rec_no_followup",
+    "Subsolid|Single|size_ps_gte6|none": "rec_sub_ps_gte6",
+    "Subsolid|Multiple|size_sub_lt6|none": "rec_sub_multi_lt6",
+    "Subsolid|Multiple|size_sub_gte6|none": "rec_sub_multi_gte6"
+};
+
+const FU_MONTHS = {
+    "Solid|Single|size_lt6|low": [],
+    "Solid|Single|size_lt6|high": [12],
+    "Solid|Multiple|size_lt6|low": [],
+    "Solid|Multiple|size_lt6|high": [12],
+    "Solid|Single|size_6_8|low": [6,12,18,24],
+    "Solid|Single|size_6_8|high": [6,12,18,24],
+    "Solid|Multiple|size_6_8|low": [3,6,18,24],
+    "Solid|Multiple|size_6_8|high": [3,6,18,24],
+    "Solid|Single|size_gt8|low": [3],
+    "Solid|Single|size_gt8|high": [3],
+    "Solid|Multiple|size_gt8|low": [3,6,18,24],
+    "Solid|Multiple|size_gt8|high": [3,6,18,24],
+    "Subsolid|Single|size_gg_lt6|none": [],
+    "Subsolid|Single|size_gg_gte6|none": [6,12,24,36,48,60],
+    "Subsolid|Single|size_ps_lt6|none": [],
+    "Subsolid|Single|size_ps_gte6|none": [3,6,12,24,36,48,60],
+    "Subsolid|Multiple|size_sub_lt6|none": [3,6,24,48],
+    "Subsolid|Multiple|size_sub_gte6|none": [3,6]
+};
+
+const SOLID_SIZES = ["size_lt6","size_6_8","size_gt8"];
+const SUB_SINGLE_SIZES = ["size_gg_lt6","size_gg_gte6","size_ps_lt6","size_ps_gte6"];
+const SUB_MULTI_SIZES = ["size_sub_lt6","size_sub_gte6"];
+
+let lang = "en";
+let currentData = null;
+
+function t(key) { return T[lang][key] || key; }
+
+function fmtDate(d) {
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${dd}.${mm}.${yy}`;
+}
+
+function addMonths(d, m) {
+    const r = new Date(d.getTime());
+    r.setDate(r.getDate() + 30 * m);
+    return r;
+}
+
+function getVal(name) {
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : null;
+}
+
+// ========== UI BUILDING ==========
+function buildRadios(containerId, name, options, onChange) {
+    const c = document.getElementById(containerId);
+    c.innerHTML = '';
+    options.forEach(opt => {
+        const lbl = document.createElement('label');
+        const inp = document.createElement('input');
+        inp.type = 'radio'; inp.name = name; inp.value = opt.value;
+        inp.onchange = onChange;
+        lbl.appendChild(inp);
+        lbl.appendChild(document.createTextNode(' ' + opt.label));
+        c.appendChild(lbl);
+    });
+}
+
+function refreshLabels() {
+    document.getElementById('hdr-title').textContent = t('page_title');
+    document.getElementById('hdr-sub').textContent = t('page_subtitle');
+    document.getElementById('lbl-patient-info').textContent = t('patient_info');
+    document.getElementById('lbl-name').textContent = t('patient_name');
+    document.getElementById('lbl-date').textContent = t('imaging_date');
+    document.getElementById('lbl-classification').textContent = t('nodule_classification');
+    document.getElementById('lbl-type').textContent = t('type');
+    document.getElementById('lbl-count').textContent = t('count');
+    document.getElementById('lbl-size').textContent = t('nodule_size');
+    document.getElementById('lbl-risk').textContent = t('risk_level');
+    document.getElementById('lbl-recommendation').textContent = t('recommendation');
+    document.getElementById('lbl-fill-all').textContent = t('fill_all_fields');
+    document.getElementById('btnPdf').textContent = t('create_report');
+
+    // Risk desc
+    document.getElementById('riskDesc').innerHTML =
+        t('high_risk_desc') + '<br>' + t('low_risk_desc') + '<br>' + t('risk_note');
+
+    // Rebuild radios with translated labels
+    buildRadios('typeGroup', 'ntype', [
+        {value:'Solid', label: t('solid')}, {value:'Subsolid', label: t('subsolid')}
+    ], () => { rebuildSizes(); update(); });
+
+    buildRadios('countGroup', 'ncount', [
+        {value:'Single', label: t('single')}, {value:'Multiple', label: t('multiple')}
+    ], () => { rebuildSizes(); update(); });
+
+    buildRadios('riskGroup', 'nrisk', [
+        {value:'low', label: t('low_risk')}, {value:'high', label: t('high_risk')}
+    ], update);
+
+    rebuildSizes();
+}
+
+function rebuildSizes() {
+    const ntype = getVal('ntype');
+    const ncount = getVal('ncount');
+    let keys = [];
+    if (ntype === 'Solid') keys = SOLID_SIZES;
+    else if (ntype === 'Subsolid' && ncount === 'Single') keys = SUB_SINGLE_SIZES;
+    else if (ntype === 'Subsolid' && ncount === 'Multiple') keys = SUB_MULTI_SIZES;
+
+    buildRadios('sizeGroup', 'nsize', keys.map(k => ({value: k, label: t(k)})), update);
+
+    // Show/hide risk card
+    document.getElementById('riskCard').style.display = (ntype === 'Subsolid') ? 'none' : '';
+    update();
+}
+
+function update() {
+    const name = document.getElementById('patientName').value.trim();
+    const dateStr = document.getElementById('imagingDate').value;
+    const ntype = getVal('ntype');
+    const ncount = getVal('ncount');
+    const nsize = getVal('nsize');
+    const nrisk = (ntype === 'Solid') ? getVal('nrisk') : 'none';
+
+    const area = document.getElementById('resultArea');
+    const btn = document.getElementById('btnPdf');
+
+    if (!name || !dateStr || !ntype || !ncount || !nsize || !nrisk) {
+        area.innerHTML = `<p class="placeholder">${t('fill_all_fields')}</p>`;
+        btn.disabled = true;
+        currentData = null;
+        return;
+    }
+
+    const key = `${ntype}|${ncount}|${nsize}|${nrisk}`;
+    const recKey = REC_KEYS[key];
+    const months = FU_MONTHS[key] || [];
+    if (!recKey) { area.innerHTML = ''; btn.disabled = true; currentData = null; return; }
+
+    const recText = t(recKey);
+    const imgDate = new Date(dateStr);
+
+    const followUps = months.map(m => ({
+        months: m,
+        date: fmtDate(addMonths(imgDate, m))
+    }));
+
+    const sizeDisplay = t(nsize);
+    const countDisplay = t(ncount.toLowerCase());
+    const riskDisplay = nrisk !== 'none' ? t(nrisk + '_risk') : '';
+
+    currentData = { name, imgDate: fmtDate(imgDate), ntype: t(ntype.toLowerCase()),
+        countDisplay, sizeDisplay, riskDisplay, recText, isMultiple: ncount==='Multiple',
+        followUps, recKey };
+
+    let html = '<div class="result-box">';
+    html += `<h4>${t('patient_summary')}</h4>`;
+    html += `<div class="field-row"><b>${t('name_label')}:</b> ${name}</div>`;
+    html += `<div class="field-row"><b>${t('imaging_date_label')}:</b> ${fmtDate(imgDate)}</div>`;
+    html += `<div class="field-row"><b>${t('nodule_label')}:</b> ${t(ntype.toLowerCase())} | ${countDisplay} | ${sizeDisplay}</div>`;
+    if (riskDisplay) html += `<div class="field-row"><b>${t('risk_label')}:</b> ${riskDisplay}</div>`;
+    html += `<h4>${t('recommendation')}</h4><p>${recText}</p>`;
+    if (ncount === 'Multiple') html += `<p class="note">${t('multiple_note')}</p>`;
+    html += `<h4>${t('follow_up_schedule')}</h4>`;
+    if (followUps.length) {
+        html += `<table class="fu-table"><tr><th>${t('timeframe')}</th><th>${t('suggested_date')}</th></tr>`;
+        followUps.forEach(f => {
+            html += `<tr><td>${f.months} ${t('months')}</td><td class="date">${f.date}</td></tr>`;
+        });
+        html += '</table>';
+    } else {
+        html += `<p>${t('no_follow_up')}</p>`;
+    }
+    html += '</div>';
+    area.innerHTML = html;
+    btn.disabled = false;
+}
+
+// ========== MODAL ==========
+function showModal() {
+    const sections = t('info_sections');
+    let html = '';
+    sections.forEach(s => {
+        html += `<h3>${s.title}</h3><ul>`;
+        s.items.forEach(i => { html += `<li>${i}</li>`; });
+        html += '</ul>';
+    });
+    document.getElementById('modal-title').textContent = t('measurement_info');
+    document.getElementById('modalBody').innerHTML = html;
+    document.getElementById('modalOverlay').classList.add('active');
+}
+
+function hideModal() {
+    document.getElementById('modalOverlay').classList.remove('active');
+}
+
+// ========== LANGUAGE ==========
+function setLang(l) {
+    lang = l;
+    document.getElementById('langSelect').value = l;
+    refreshLabels();
+    update();
+}
+
+// ========== PDF ==========
+function createPdf() {
+    if (!currentData) return;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const pw = doc.internal.pageSize.getWidth() - 20;
+    let y = 10;
+
+    // Header
+    doc.setFillColor(43, 87, 151);
+    doc.rect(10, y, pw, 22, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16); doc.setFont(undefined, 'bold');
+    doc.text(t('report_title'), 10 + pw/2, y + 10, {align: 'center'});
+    doc.setFontSize(9); doc.setFont(undefined, 'italic');
+    doc.text(t('page_subtitle'), 10 + pw/2, y + 18, {align: 'center'});
+    y += 28;
+
+    // Report date
+    doc.setTextColor(100,100,100); doc.setFontSize(8); doc.setFont(undefined, 'italic');
+    doc.text(`${t('report_generated')}: ${fmtDate(new Date())}`, 10 + pw, y, {align:'right'});
+    y += 8;
+
+    // Patient Summary heading
+    doc.setFillColor(214, 228, 245);
+    doc.rect(10, y, pw, 8, 'F');
+    doc.setTextColor(43, 87, 151); doc.setFontSize(11); doc.setFont(undefined, 'bold');
+    doc.text('  ' + t('patient_summary'), 12, y + 6);
+    y += 12;
+
+    const fields = [
+        [t('name_label'), currentData.name],
+        [t('imaging_date_label'), currentData.imgDate],
+        [t('nodule_label'), `${currentData.ntype} | ${currentData.countDisplay} | ${currentData.sizeDisplay}`]
+    ];
+    if (currentData.riskDisplay) fields.push([t('risk_label'), currentData.riskDisplay]);
+
+    doc.setTextColor(30,30,30); doc.setFontSize(10);
+    fields.forEach(([lbl, val]) => {
+        doc.setFont(undefined, 'bold');
+        doc.text(`  ${lbl}:`, 12, y);
+        doc.setFont(undefined, 'normal');
+        doc.text(`  ${val}`, 55, y);
+        y += 6;
+    });
+    y += 4;
+
+    // Recommendation heading
+    doc.setFillColor(214, 228, 245);
+    doc.rect(10, y, pw, 8, 'F');
+    doc.setTextColor(43, 87, 151); doc.setFontSize(11); doc.setFont(undefined, 'bold');
+    doc.text('  ' + t('recommendation'), 12, y + 6);
+    y += 14;
+    doc.setTextColor(30,30,30); doc.setFontSize(10); doc.setFont(undefined, 'normal');
+    const recLines = doc.splitTextToSize(currentData.recText, pw - 4);
+    doc.text(recLines, 12, y);
+    y += recLines.length * 5 + 4;
+
+    if (currentData.isMultiple) {
+        doc.setTextColor(184,92,0); doc.setFontSize(8); doc.setFont(undefined, 'italic');
+        doc.text(t('multiple_note'), 12, y);
+        y += 8;
+    }
+
+    // Follow-up heading
+    doc.setFillColor(214, 228, 245);
+    doc.rect(10, y, pw, 8, 'F');
+    doc.setTextColor(43, 87, 151); doc.setFontSize(11); doc.setFont(undefined, 'bold');
+    doc.text('  ' + t('follow_up_schedule'), 12, y + 6);
+    y += 14;
+
+    if (currentData.followUps.length) {
+        // Table header
+        doc.setFillColor(240, 244, 248);
+        doc.rect(10, y - 4, pw, 7, 'F');
+        doc.setTextColor(43,87,151); doc.setFontSize(9); doc.setFont(undefined, 'bold');
+        doc.text('    ' + t('timeframe'), 12, y);
+        doc.text(t('suggested_date'), 10 + pw/2, y);
+        y += 6;
+
+        doc.setFont(undefined, 'normal'); doc.setTextColor(30,30,30);
+        currentData.followUps.forEach((f, i) => {
+            if (i % 2 === 0) { doc.setFillColor(250,250,252); }
+            else { doc.setFillColor(240,244,248); }
+            doc.rect(10, y - 4, pw, 6, 'F');
+            doc.text(`    ${f.months} ${t('months')}`, 12, y);
+            doc.setTextColor(43, 122, 62);
+            doc.text(f.date, 10 + pw/2, y);
+            doc.setTextColor(30,30,30);
+            y += 6;
+        });
+    } else {
+        doc.setTextColor(30,30,30); doc.setFontSize(10); doc.setFont(undefined, 'normal');
+        doc.text('  ' + t('no_follow_up'), 12, y);
+        y += 8;
+    }
+
+    // Footer
+    y += 10;
+    doc.setDrawColor(200,200,200);
+    doc.line(10, y, 10 + pw, y);
+    y += 5;
+    doc.setTextColor(150,150,150); doc.setFontSize(7); doc.setFont(undefined, 'italic');
+    doc.text(t('pdf_footer'), 10 + pw/2, y, {align: 'center'});
+
+    // Save
+    const fileName = `Nodule_Report_${currentData.name.replace(/\s+/g,'_')}_${fmtDate(new Date()).replace(/\./g,'')}.pdf`;
+
+    if (typeof AndroidBridge !== 'undefined') {
+        const base64 = doc.output('datauristring').split(',')[1];
+        AndroidBridge.savePdf(base64, fileName);
+    } else {
+        doc.save(fileName);
+    }
+}
+
+// ========== INIT ==========
+(function init() {
+    // Detect language from URL param or Android bridge or browser
+    const params = new URLSearchParams(window.location.search);
+    let detectedLang = params.get('lang') || '';
+    if (!detectedLang && typeof AndroidBridge !== 'undefined') {
+        try { detectedLang = AndroidBridge.getDeviceLanguage(); } catch(e) {}
+    }
+    if (!detectedLang) {
+        detectedLang = (navigator.language || '').slice(0, 2);
+    }
+    lang = T[detectedLang] ? detectedLang : 'en';
+    document.getElementById('langSelect').value = lang;
+
+    // Set today's date
+    const today = new Date();
+    document.getElementById('imagingDate').value = today.toISOString().slice(0,10);
+
+    refreshLabels();
+})();
+</script>
+</body>
+</html>
