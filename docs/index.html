@@ -120,7 +120,7 @@ input[type="text"]:focus, input[type="date"]:focus { border-color: #2b5797; outl
     </div>
     <select class="lang-select" id="langSelect" onchange="setLang(this.value)">
         <option value="en">English</option>
-        <option value="tr">T\u00fcrk\u00e7e</option>
+        <option value="tr">Türkçe</option>
     </select>
 </div>
 
@@ -430,7 +430,8 @@ function refreshLabels() {
     document.getElementById('lbl-size').textContent = t('nodule_size');
     document.getElementById('lbl-risk').textContent = t('risk_level');
     document.getElementById('lbl-recommendation').textContent = t('recommendation');
-    document.getElementById('lbl-fill-all').textContent = t('fill_all_fields');
+    const fillEl = document.getElementById('lbl-fill-all');
+    if (fillEl) fillEl.textContent = t('fill_all_fields');
     document.getElementById('btnPdf').textContent = t('create_report');
 
     // Risk desc
