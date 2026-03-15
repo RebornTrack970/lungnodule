@@ -120,7 +120,7 @@ input[type="text"]:focus, input[type="date"]:focus { border-color: #2b5797; outl
     </div>
     <select class="lang-select" id="langSelect" onchange="setLang(this.value)">
         <option value="en">English</option>
-        <option value="tr">Turkce</option>
+        <option value="tr">T\u00fcrk\u00e7e</option>
     </select>
 </div>
 
@@ -413,6 +413,12 @@ function buildRadios(containerId, name, options, onChange) {
 }
 
 function refreshLabels() {
+    // Save current radio selections before rebuilding
+    const savedType = getVal('ntype');
+    const savedCount = getVal('ncount');
+    const savedSize = getVal('nsize');
+    const savedRisk = getVal('nrisk');
+
     document.getElementById('hdr-title').textContent = t('page_title');
     document.getElementById('hdr-sub').textContent = t('page_subtitle');
     document.getElementById('lbl-patient-info').textContent = t('patient_info');
@@ -444,7 +450,17 @@ function refreshLabels() {
         {value:'low', label: t('low_risk')}, {value:'high', label: t('high_risk')}
     ], update);
 
+    // Restore saved selections
+    if (savedType) { const el = document.querySelector(`input[name="ntype"][value="${savedType}"]`); if (el) el.checked = true; }
+    if (savedCount) { const el = document.querySelector(`input[name="ncount"][value="${savedCount}"]`); if (el) el.checked = true; }
+    if (savedRisk) { const el = document.querySelector(`input[name="nrisk"][value="${savedRisk}"]`); if (el) el.checked = true; }
+
     rebuildSizes();
+
+    // Restore size selection after sizes are rebuilt
+    if (savedSize) { const el = document.querySelector(`input[name="nsize"][value="${savedSize}"]`); if (el) el.checked = true; }
+
+    update();
 }
 
 function rebuildSizes() {
